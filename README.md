@@ -20,9 +20,14 @@ Replot_fillRect(rplt, RPOINT(300, 400), RSIZE(200, 200));
 Replot_write(rplt, "test.jpg");
 ```
 
-### 2. Others
+> for more info please visit `test.c` file
 
-- [RSoft](https://github.com/ColleagueRiley/rsoft)
+![](./test.jpg)
 
-- [Silk](https://github.com/itsYakub/Silk/)
+### 2. Alternatives
 
+- [RSoft: software rendering library oriented around math.](https://github.com/ColleagueRiley/rsoft)
+
+- [Silk: Single-Header CPU graphics library](https://github.com/itsYakub/Silk/)
+
+- [Olive: Simple 2D Graphics Library for C](https://github.com/tsoding/olive.c)
