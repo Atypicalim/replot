@@ -3,7 +3,6 @@
 
 
 #include "replot.h"
-#include<windows.h>
 
 #define WIDTH 600
 #define HEIGHT 600
