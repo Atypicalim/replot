@@ -1,9 +1,5 @@
-/* TODO
-- textures for poylgons
-- textures for triangles
-*/
-
-
+// RSoft
+// https://github.com/ColleagueRiley/rsoft
 
 /*
 * Copyright (C) 2024 ColleagueRiley
