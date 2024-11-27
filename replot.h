@@ -27,9 +27,6 @@ typedef unsigned char RPixel[4];
 	typedef unsigned char *RTexture;
 #endif
 
-// define REPLOT_PLOT_FUNC then implement
-void replot_pilot_func(int x, int y, u8 r, u8 g, u8 b, u8 a);
-
 #ifndef RSOFT_IMPLEMENTATION
 #define RSOFT_IMPLEMENTATION
 #include "RSoft.h"
@@ -604,6 +601,8 @@ RPoint RC_POINT_MIDDLE(RPoint p1, RPoint p2) {
 
 /////////////////////////////////////////////////////
 
+typedef void (*REPLOT_PLOT_FUNC)(int, int, int, int, int, int);
+
 typedef struct Replot {
     int w;
     int h;
@@ -631,7 +630,11 @@ typedef struct Replot {
     int fcsW;
     int fcsH;
     //
+    REPLOT_PLOT_FUNC plot;
+    //
 } Replot;
+
+void Replot_clear(Replot *, RColor);
 
 #include "replot.c"
 

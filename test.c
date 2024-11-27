@@ -30,7 +30,7 @@ int main(void) {
     //
     Replot_fillTriangle(rplt, RPOINT(100, 100), RPOINT(200, 100), RPOINT(150, 200));
     Replot_fillArc(rplt, RPOINT(450, 450), 50, 45, 270);
-    Replot_printText(rplt, RPOINT(350, 50), 4, "WELCOME!");
+    Replot_printText(rplt, RPOINT(300, 35), 4, "WELCOME!");
     // 
     char *_path = "test.jpg";
     Replot_write(rplt, _path);

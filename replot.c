@@ -11,12 +11,14 @@ void _replot_prepare(Replot *this, int w, int h) {
     int count = w * h * this->c;
     int size = count * sizeof(RByte);
     this->buffer = (RTexture)realloc(this->buffer, size);
-    memset(this->buffer, 11, size);  
+    // memset(this->buffer, 10, size);  
+    Replot_clear(this, RCOLOR(10, 10, 10, 255));
 }
 
 Replot *Replot_new(int w, int h) {
     Replot *rplt = (Replot *)malloc(sizeof(Replot));
     //
+    rplt->plot = NULL;
     rplt->buffer = NULL;
     rplt->stencil = NULL;
     //
@@ -39,8 +41,8 @@ Replot *Replot_wrap(RTexture *txtr, int w, int h) {
     Replot *rplt = Replot_new(w, h);
     int _chnl = 4;
     int _size = w * h * _chnl;
-    rplt->stencil = (RTexture)malloc(_size);
-    memcpy(rplt->buffer, txtr, _size);
+    rplt->buffer = (RTexture)malloc(_size);
+    memcpy(rplt->buffer, *txtr, _size);
     return rplt;
 }
 
@@ -210,9 +212,13 @@ void _replot_setPixel(Replot *this, int px, int py, u8 color[4]) {
 		return;
     }
 
-    #ifdef REPLOT_PLOT_FUNC
-    replot_pilot_func(px, py, color[0], color[1], color[2], color[3]);
-    #else
+    #ifndef REPLOT_NO_PLOT
+        if (this->plot) {
+            this->plot(px, py, color[0], color[1], color[2], color[3]);
+            return;
+        }
+    #endif
+
 	int index = ((u32)py) * (4 * bufferW) + (u32)px * 4;
 	if (color[3] != 255) {
 		float alpha = color[3] / 255;
@@ -222,7 +228,6 @@ void _replot_setPixel(Replot *this, int px, int py, u8 color[4]) {
 		color[3] =  (color[3] * alpha) + ((1 - alpha) * buffer[index + 3]);
 	}
     memcpy(buffer + index, color, 4 * sizeof(u8));
-    #endif
 }
 
 void _replot_fillPointWithXY(Replot *this, int px, int py) {
