@@ -41,7 +41,7 @@ Replot *Replot_wrap(RTexture *txtr, int w, int h) {
     Replot *rplt = Replot_new(w, h);
     int _chnl = 4;
     int _size = w * h * _chnl;
-    rplt->buffer = (RTexture)malloc(_size);
+    rplt->buffer = (RTexture)realloc(rplt->buffer, _size);
     memcpy(rplt->buffer, *txtr, _size);
     return rplt;
 }
@@ -58,10 +58,9 @@ void Replot_setColor(Replot *this, RColor color) {
 }
 
 void _replot_delStencil(Replot *this) {
-    // TODO:freee loaded image and txtr
-    // if (this->stencil) {
-    //     free(this->stencil);
-    // } 
+    if (this->stencil) {
+        free(this->stencil);
+    } 
     this->stencil = NULL;
     this->stencilW = 0;
     this->stencilH = 0;
@@ -71,7 +70,7 @@ void _replot_delStencil(Replot *this) {
 void _replot_setStencil(Replot *this, RTexture txtr, int w, int h) {
     int _chnl = 4;
     int _size = w * h * _chnl;
-    this->stencil = (RTexture)malloc(_size);
+    this->stencil = (RTexture)realloc(this->stencil, _size);
     memcpy(this->stencil, txtr, _size);
     this->stencilW = w;
     this->stencilH = h;
@@ -681,7 +680,7 @@ void Replot_crop(Replot *this, RPoint point, RSize size) {
 
 /////////////////////////////////////////////////////
 
-#ifdef REPLOT_STB_IMPLEMENTED
+#ifdef REPLOT_USE_IMAGE
 void Replot_setImageExt(Replot *this, char *path, RPoint point, RSize size) {
     if (path == NULL) {
         _replot_delStencil(this);
@@ -721,7 +720,7 @@ void Replot_drawImage(Replot *this, RPoint point, RSize size, char *path) {
 
 /////////////////////////////////////////////////////
 
-#ifdef REPLOT_STB_IMPLEMENTED
+#ifdef REPLOT_USE_IMAGE
 Replot *Replot_read(char *path) {
     int w, h, c;
     RTexture txtr = rimage_read(path, &w, &h, &c);

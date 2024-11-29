@@ -1,4 +1,7 @@
 
+#ifndef REPLOT_IMAGE
+#define REPLOT_IMAGE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -6,10 +9,10 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <time.h>
 
-
-#ifndef REPLOT_STB_NO_INCLUDE
-    #define REPLOT_STB_INCLUDED
+#ifndef REPLOT_NO_STB
+    #define REPLOT_USE_STB
     #ifndef STB_IMAGE_IMPLEMENTATION
         #define STB_IMAGE_IMPLEMENTATION
         #include "./others/stb_image.h"
@@ -20,13 +23,24 @@
     #endif
 #endif
 
-#ifndef REPLOT_STB_NO_IMPLEMENT
-    #define REPLOT_STB_IMPLEMENTED
+#if !defined(REPLOT_NO_CUTE) && !defined(REPLOT_USE_STB)
+    #define REPLOT_USE_CUTE
+    #ifndef CUTE_PNG_IMPLEMENTATION
+    #define CUTE_PNG_IMPLEMENTATION
+    #include "./others/cute_png.h"
+    #endif
+#endif
+
+
+#if defined(REPLOT_USE_STB) || defined(REPLOT_USE_CUTE)
+    #define REPLOT_USE_IMAGE
 #endif
 
 #ifndef RTexture
 	typedef unsigned char *RTexture;
 #endif
+
+#define __CHANNEL 4
 
 #define RC_IMAGE_TYPE_PNG 1
 #define RC_IMAGE_TYPE_JPG 2
@@ -53,34 +67,110 @@ void rimage_free(RTexture *buffer);
 
 /////////////////////////////////////////////////////
 
-#ifdef REPLOT_STB_IMPLEMENTED
+// typedef long long llt;
+// long long __get_time() {
+//     long long tm = (long long)(clock() * 1000 / CLOCKS_PER_SEC);
+//     return tm;
+// }
+
+void __invalid_type(char *path) {
+    printf("REPLOT type not supported: %s\n", path);
+}
+
+#ifdef REPLOT_USE_IMAGE
 RTexture rimage_read(char *path, int *w, int *h, int *c) {
     int _type = _rimage_path_type(path);
     RTexture txtr = NULL;
-    if (_type == RC_IMAGE_TYPE_PNG || _type == RC_IMAGE_TYPE_JPG) {
-        txtr = stbi_load(path, w, h, c, 4);
+    // 
+    #ifdef REPLOT_USE_CUTE
+    if (_type == RC_IMAGE_TYPE_PNG) {
+        cp_image_t img = cp_load_png(path);
+        *w = img.w;
+        *h = img.h;
+        int _w = *w;
+        int _h = *h;
+        int size = _w*_h*__CHANNEL*sizeof(unsigned char);
+        txtr = (RTexture)malloc(size);
+        for (int y = 0; y < _h; y++) {
+            for (int x = 0; x < _w; x++) {
+                int idx = y * _w + x;
+                int _idx = idx * __CHANNEL;
+                cp_pixel_t pix = img.pix[idx];
+                txtr[_idx + 0] = pix.r;
+                txtr[_idx + 1] = pix.g;
+                txtr[_idx + 2] = pix.b;
+                txtr[_idx + 3] = pix.a;
+            } 
+        }
+        free(img.pix);
+        CUTE_PNG_MEMSET(&img, 0, sizeof(img));
     } else {
-        printf("file format not supported");
+        __invalid_type(path);
     }
+    #endif
+    // 
+    #ifdef REPLOT_USE_STB
+    if (_type == RC_IMAGE_TYPE_PNG || _type == RC_IMAGE_TYPE_JPG) {
+        unsigned char *img = stbi_load(path, w, h, c, 4);
+        const char *reason = stbi_failure_reason();
+        txtr = img;
+    } else {
+        __invalid_type(path);
+    }
+    #endif
+    //
     return txtr;
 }
 #endif
 
-#ifdef REPLOT_STB_IMPLEMENTED
+#ifdef REPLOT_USE_IMAGE
 void rimage_write(char *path, RTexture *buffer, int w, int h, int c) {
     int _type = _rimage_path_type(path);
+    RTexture txtr = *buffer;
+    //
+    #ifdef REPLOT_USE_CUTE
+    if (_type == RC_IMAGE_TYPE_PNG) {
+        cp_pixel_t* pixes = (cp_pixel_t*)malloc(sizeof(cp_pixel_t) * w * h);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int idx = y * w + x;
+                int _idx = idx * 4;
+                cp_pixel_t pix;
+                pix.r = (uint8_t)(txtr[_idx + 0]);
+                pix.g = (uint8_t)(txtr[_idx + 1]);
+                pix.b = (uint8_t)(txtr[_idx + 2]);
+                pix.a = (uint8_t)(txtr[_idx + 3]);
+                pixes[idx] = pix;
+            }
+        }
+        cp_image_t img =(cp_image_t){
+            .w = w,
+            .h = h,
+            .pix = pixes,
+        };
+        int code = cp_save_png(path, &img);
+    } else {
+        __invalid_type(path);
+    }
+    #endif
+    // 
+    #ifdef REPLOT_USE_STB
     if (_type == RC_IMAGE_TYPE_PNG) {
         stbi_write_png(path, w, h, c, *buffer, w*c);
     } else if (_type == RC_IMAGE_TYPE_JPG) {
         stbi_write_jpg(path, w, h, c, *buffer, 100);
     } else {
-        printf("file format not supported");
+        __invalid_type(path);
     }
+    #endif
+    //
 }
 #endif
 
-#ifdef REPLOT_STB_IMPLEMENTED
+#ifdef REPLOT_USE_IMAGE
 void rimage_free(RTexture *buffer) {
-    // stbi_image_free(img);
+    free(*buffer);
 }
+#endif
+
 #endif
