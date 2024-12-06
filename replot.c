@@ -680,6 +680,13 @@ void Replot_crop(Replot *this, RPoint point, RSize size) {
 
 /////////////////////////////////////////////////////
 
+void Replot_setTexture(Replot *this, RTexture txtr, int w, int h) {
+    RPoint point = RPOINT(w / 2, h / 2);
+    RSize size = RSIZE(w, h);
+    _replot_setStencil(this, txtr, w, h);
+    _replot_limit(this, &point, &size);
+}
+
 #ifdef REPLOT_USE_IMAGE
 void Replot_setImageExt(Replot *this, char *path, RPoint point, RSize size) {
     if (path == NULL) {

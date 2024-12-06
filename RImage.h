@@ -11,19 +11,7 @@
 #include <stdbool.h>
 #include <time.h>
 
-#ifndef REPLOT_NO_STB
-    #define REPLOT_USE_STB
-    #ifndef STB_IMAGE_IMPLEMENTATION
-        #define STB_IMAGE_IMPLEMENTATION
-        #include "./others/stb_image.h"
-    #endif
-    #ifndef STB_IMAGE_WRITE_IMPLEMENTATION
-        #define STB_IMAGE_WRITE_IMPLEMENTATION
-        #include "./others/stb_image_write.h"
-    #endif
-#endif
-
-#if !defined(REPLOT_NO_CUTE) && !defined(REPLOT_USE_STB)
+#ifndef REPLOT_NO_CUTE
     #define REPLOT_USE_CUTE
     #ifndef CUTE_PNG_IMPLEMENTATION
     #define CUTE_PNG_IMPLEMENTATION
@@ -32,7 +20,7 @@
 #endif
 
 
-#if defined(REPLOT_USE_STB) || defined(REPLOT_USE_CUTE)
+#ifdef REPLOT_USE_CUTE
     #define REPLOT_USE_IMAGE
 #endif
 
@@ -87,6 +75,7 @@ RTexture rimage_read(char *path, int *w, int *h, int *c) {
         cp_image_t img = cp_load_png(path);
         *w = img.w;
         *h = img.h;
+        *c = __CHANNEL;
         int _w = *w;
         int _h = *h;
         int size = _w*_h*__CHANNEL*sizeof(unsigned char);
@@ -104,16 +93,6 @@ RTexture rimage_read(char *path, int *w, int *h, int *c) {
         }
         free(img.pix);
         CUTE_PNG_MEMSET(&img, 0, sizeof(img));
-    } else {
-        __invalid_type(path);
-    }
-    #endif
-    // 
-    #ifdef REPLOT_USE_STB
-    if (_type == RC_IMAGE_TYPE_PNG || _type == RC_IMAGE_TYPE_JPG) {
-        unsigned char *img = stbi_load(path, w, h, c, 4);
-        const char *reason = stbi_failure_reason();
-        txtr = img;
     } else {
         __invalid_type(path);
     }
@@ -149,16 +128,6 @@ void rimage_write(char *path, RTexture *buffer, int w, int h, int c) {
             .pix = pixes,
         };
         int code = cp_save_png(path, &img);
-    } else {
-        __invalid_type(path);
-    }
-    #endif
-    // 
-    #ifdef REPLOT_USE_STB
-    if (_type == RC_IMAGE_TYPE_PNG) {
-        stbi_write_png(path, w, h, c, *buffer, w*c);
-    } else if (_type == RC_IMAGE_TYPE_JPG) {
-        stbi_write_jpg(path, w, h, c, *buffer, 100);
     } else {
         __invalid_type(path);
     }

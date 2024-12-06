@@ -26,6 +26,8 @@ Replot_write(rplt, "test.jpg");
 
 ### 2. Alternatives
 
+- [Pntr: Image manipulation library for C, with a focus on ease of use.](git@github.com:RobLoach/pntr.git)
+
 - [RSoft: software rendering library oriented around math.](https://github.com/ColleagueRiley/rsoft)
 
 - [Silk: Single-Header CPU graphics library](https://github.com/itsYakub/Silk/)
