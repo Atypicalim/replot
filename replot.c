@@ -419,7 +419,7 @@ void __replot_paintTriangleComplex(Replot *this, RPoint *points, int thickness){
         }
         _x1 = points[0].x;
         _x2 = points[1].x;
-        // _replot_fillLine(this, &points[0], &points[1]);
+        _replot_fillLine(this, &points[0], &points[1]);
         __replot_paintTriangleSimple(this, _topY, _btmY, &_x1, &_x2, slope02, slope12, thickness);
     }else if(points[1].y == points[2].y){
         if(points[2].x < points[1].x){
@@ -428,7 +428,7 @@ void __replot_paintTriangleComplex(Replot *this, RPoint *points, int thickness){
         }
         _x1 = points[0].x;
         _x2 = points[0].x;
-        // _replot_fillLine(this, &points[1], &points[2]);
+        _replot_fillLine(this, &points[1], &points[2]);
         __replot_paintTriangleSimple(this, _topY, _btmY, &_x1, &_x2, slope01, slope02, thickness);
     }else{
         _x1 = points[0].x;
