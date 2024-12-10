@@ -1,5 +1,6 @@
-del test.jpg
+del output.png
 del a.exe
 gcc .\test.c -I ../ -l gdi32 -l winmm -l opengl32
 a.exe
-test.jpg
+output.png
+@REM mspaint.exe output.png

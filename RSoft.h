@@ -177,8 +177,7 @@ RSOFTDEF void RSoft_copyBuffer(u8* dest, size_t width, u8* src, RSoft_rect rect)
 RSOFTDEF void RSoft_setMatrix(RSoft_matrix matrix);
 RSOFTDEF RSoft_matrix RSoft_initMatrix(void);
 RSOFTDEF RSoft_matrix RSoft_multiplyMatrix(float left[16], float right[16]);
-RSOFTDEF RSoft_matrix RSoft_simpleRotateMatrix(RSoft_matrix matrix, float angle);
-RSOFTDEF RSoft_matrix RSoft_rotateMatrix(RSoft_matrix matrix, float angle, float x, float y, float z);
+RSOFTDEF RSoft_matrix RSoft_rotateMatrix(RSoft_matrix matrix, float angle);
 RSOFTDEF RSoft_matrix RSoft_translateMatrix(RSoft_matrix matrix, RSoft_vector v);
 RSOFTDEF RSoft_vector RSoft_applyMatrix(RSoft_matrix matrix, RSoft_vector v);
 
@@ -281,32 +280,7 @@ RSoft_matrix RSoft_multiplyMatrix(float left[16], float right[16]) {
 	}};
 }
 
-RSoft_matrix RSoft_rotateMatrix(RSoft_matrix matrix, float angle, float x, float y, float z) {
-	/* Axis vector (x, y, z) normalization */
-	float lengthSquared = x * x + y * y + z * z;
-	if ((lengthSquared != 1.0f) && (lengthSquared != 0.0f)) {
-		float inverseLength = 1.0f / sqrtf(lengthSquared);
-		x *= inverseLength;
-		y *= inverseLength;
-		z *= inverseLength;
-	}
-
-	/* Rotation matrix generation */
-	float sinres = RSoft_sin(angle);
-	float cosres = RSoft_cos(angle);
-	float t = 1.0f - cosres;
-
-	float rotateMatrix[16] = {
-					x * x * t + cosres,   	  	y * x * t + z * sinres,   	z * x * t - y * sinres,   	0.0f,
-					x * y * t - z * sinres,   	y * y * t + cosres,   		z * y * t + x * sinres,   	0.0f,
-					x * z * t + y * sinres,   	y * z * t - x * sinres,  	z * z * t + cosres,   		0.0f,
-					0.0f,   					0.0f,   					0.0f,   					1.0f
-	};
-
-	return RSoft_multiplyMatrix(matrix.m, rotateMatrix);
-}
-
-RSoft_matrix RSoft_simpleRotateMatrix(RSoft_matrix matrix, float angle) {
+RSoft_matrix RSoft_rotateMatrix(RSoft_matrix matrix, float angle) {
 	float sinres = RSoft_sin(angle);
 	float cosres = RSoft_cos(angle);
 	
@@ -319,6 +293,26 @@ RSoft_matrix RSoft_simpleRotateMatrix(RSoft_matrix matrix, float angle) {
 	};
 
 	return RSoft_multiplyMatrix(matrix.m, rotateMatrix);
+}
+
+RSoft_matrix RSoft_skewMatrix(RSoft_matrix matrix, float sx, float sy) {
+	float scaleMatrix[16] = {
+		1.0f,	sy,			0.0f,   	0.0f,
+		sx,	    1.0f,		0.0f,		0.0f,
+		0.0f,	0.0f,		1.0f,		0.0f,
+		0.0f,	0.0f,		0.0f,		1.0f
+	};
+	return RSoft_multiplyMatrix(matrix.m, scaleMatrix);
+}
+
+RSoft_matrix RSoft_scaleMatrix(RSoft_matrix matrix, float sx, float sy) {
+	float scaleMatrix[16] = {
+		sx,		0.0f,		0.0f,   	0.0f,
+		0.0f,	sy,			0.0f,		0.0f,
+		0.0f,	0.0f,		1.0f,		0.0f,
+		0.0f,	0.0f,		0.0f,		1.0f
+	};
+	return RSoft_multiplyMatrix(matrix.m, scaleMatrix);
 }
 
 RSoft_matrix RSoft_translateMatrix(RSoft_matrix matrix, RSoft_vector v) {
@@ -342,13 +336,24 @@ RSoft_vector RSoft_applyMatrix(RSoft_matrix matrix, RSoft_vector v) {
 	}; 
 }
 
-void _replot_matrixRotate(RSoft_matrix matrix, int *_px, int *_py) {	 			 
-    int px = *_px;
-    int py = *_py;
+int math_round(float n) {
+    return (int)(n + 0.5);
+}
+
+long long time_now() {
+    long long now = (long long)(clock() * 1000 / CLOCKS_PER_SEC);
+	return now;
+}
+
+void RMatrix_matrixRotate(RSoft_matrix matrix, int *_px, int *_py) {	 			 
+    int px = *_px * 1.0f;
+    int py = *_py * 1.0f;
     int pz = 0;
-    *_px = (px * matrix.m[0]) + (py * matrix.m[4]) + (pz * matrix.m[8]) + matrix.m[12];
-    *_py = (px * matrix.m[1]) + (py * matrix.m[5]) + (pz * matrix.m[9]) + matrix.m[13];
+    float __px = (px * matrix.m[0]) + (py * matrix.m[4]) + (pz * matrix.m[8]) + matrix.m[12];
+    float __py = (px * matrix.m[1]) + (py * matrix.m[5]) + (pz * matrix.m[9]) + matrix.m[13];
     pz = (px * matrix.m[2]) + (py * matrix.m[6]) + (pz * matrix.m[10]) + matrix.m[14];
+	*_px = math_round(__px);
+	*_py = math_round(__py);
 }
 
 #endif

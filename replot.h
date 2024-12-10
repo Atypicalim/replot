@@ -518,6 +518,30 @@ typedef struct RC_Color {
 #define RSIZE(w, h) RSOFT_AREA(w, h)
 #endif
 
+#ifndef RScale
+typedef struct RScale { float x, y; } RScale;
+#endif
+
+#ifndef RSCALE
+#define RSCALE(x, y) (RScale){w, h}
+#endif
+
+#ifndef RSkew
+typedef struct RSkew { float x, y; } RSkew;
+#endif
+
+#ifndef RSKEW
+#define RSKEW(x, y) (RSkew){x, y}
+#endif
+
+#ifndef RAnchor
+typedef struct RAnchor { float x, y; } RAnchor;
+#endif
+
+#ifndef RANCHOR
+#define RANCHOR(w, h) (RAnchor){w, h}
+#endif
+
 #ifndef RPoint
 #define RPoint RSoft_point
 #endif
@@ -533,6 +557,18 @@ typedef struct RC_Color {
 #ifndef RAREA
 #define RAREA(w, h) RSOFT_AREA(w, h)
 #endif
+
+/////////////////////////////////////////////////////
+
+void RPOINT_ADD_TO(RPoint *to, RPoint *p) {
+    to->x = to->x + p->x;
+    to->y = to->y + p->y;
+}
+
+void RSIZE_ADD_TO(RSize *to, RSize *p) {
+    to->w = to->w + p->w;
+    to->h = to->h + p->h;
+}
 
 /////////////////////////////////////////////////////
 
@@ -614,21 +650,22 @@ typedef struct Replot {
     int sizeH;
     //
     RPixel drawColor;
+    //
+    RSoft_matrix drawMatrix;
+    RSoft_matrix txtrMatrix;
     int drawRotation;
+    int txtrRotation;
+    RScale drawScale;
+    RScale txtrScale;
+    RSkew drawSkew;
+    RSkew txtrSkew;
+    //
+    RRect drawFocus;
+    RRect txtrLimit;
     //
     RTexture stencil;
     int stencilW;
     int stencilH;
-    //
-    int lmtX;
-    int lmtY;
-    int lmtW;
-    int lmtH;
-    //
-    int fcsX;
-    int fcsY;
-    int fcsW;
-    int fcsH;
     //
     REPLOT_PLOT_FUNC plot;
     //
