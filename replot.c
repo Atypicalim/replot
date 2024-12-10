@@ -15,6 +15,23 @@ void _replot_prepare(Replot *this, int w, int h) {
     Replot_clear(this, RCOLOR(10, 10, 10, 255));
 }
 
+void _rplot_reset(Replot *this) {
+    this->drawColor[0] = 255;
+    this->drawColor[1] = 255;
+    this->drawColor[2] = 255;
+    this->drawColor[3] = 255; 
+    this->drawRotation = 0;
+    this->txtrRotation = 0;
+    this->drawScale = (RScale){1, 1};
+    this->txtrScale = (RScale){1, 1};
+    this->drawSkew = (RSkew){0, 0};
+    this->txtrSkew = (RSkew){0, 0};
+    this->drawFocus = (RRect){0, 0, 0, 0};
+    this->txtrLimit = (RRect){0, 0, 0, 0};
+    this->drawMatrix = RMatrix_initMatrix();
+    this->txtrMatrix = RMatrix_initMatrix();
+}
+
 Replot *Replot_new(int w, int h) {
     Replot *rplt = (Replot *)malloc(sizeof(Replot));
     //
@@ -22,20 +39,7 @@ Replot *Replot_new(int w, int h) {
     rplt->buffer = NULL;
     rplt->stencil = NULL;
     //
-    rplt->drawColor[0] = 255;
-    rplt->drawColor[1] = 255;
-    rplt->drawColor[2] = 255;
-    rplt->drawColor[3] = 255;
-    // 
-    rplt->drawRotation = 0;
-    rplt->txtrRotation = 0;
-    rplt->drawScale = (RScale){1, 1};
-    rplt->txtrScale = (RScale){1, 1};
-    rplt->drawSkew = (RSkew){0, 0};
-    rplt->txtrSkew = (RSkew){0, 0};
-    rplt->drawFocus = (RRect){0, 0, 0, 0};
-    rplt->txtrLimit = (RRect){0, 0, 0, 0};
-    //
+    _rplot_reset(rplt);
     _replot_prepare(rplt, w, h);
     return rplt;
 }
@@ -189,12 +193,12 @@ void _replot_applyChanges(Replot *this) {
     float dsx = this->drawScale.x;
     float dsy = this->drawScale.y;
     // 
-    RSoft_matrix dm = RSoft_initMatrix();
-    dm = RSoft_translateMatrix(dm, RSOFT_VECTOR2D(-this->drawFocus.x, -this->drawFocus.y));
-    dm = RSoft_scaleMatrix(dm, dsx, dsy);
-    dm = RSoft_skewMatrix(dm, this->drawSkew.x, this->drawSkew.y);
-    dm = RSoft_rotateMatrix(dm, -this->drawRotation);
-    dm = RSoft_translateMatrix(dm, RSOFT_VECTOR2D(this->drawFocus.x, this->drawFocus.y));
+    RMatrix dm = RMatrix_initMatrix();
+    dm = RMatrix_translateMatrix(dm, RVECTOR(-this->drawFocus.x, -this->drawFocus.y));
+    dm = RMatrix_scaleMatrix(dm, dsx, dsy);
+    dm = RMatrix_skewMatrix(dm, this->drawSkew.x, this->drawSkew.y);
+    dm = RMatrix_rotateMatrix(dm, -this->drawRotation);
+    dm = RMatrix_translateMatrix(dm, RVECTOR(this->drawFocus.x, this->drawFocus.y));
     this->drawMatrix = dm;
     // 
     // fill limit to focus
@@ -203,12 +207,12 @@ void _replot_applyChanges(Replot *this) {
     float tsx = this->txtrScale.x * rate1;
     float tsy = this->txtrScale.y * rate2;
     // 
-    RSoft_matrix tm = RSoft_initMatrix();
-    tm = RSoft_translateMatrix(tm, RSOFT_VECTOR2D(-this->drawFocus.x, -this->drawFocus.y));
-    tm = RSoft_rotateMatrix(tm, this->txtrRotation + this->drawRotation);
-    tm = RSoft_skewMatrix(tm, this->txtrSkew.x, this->txtrSkew.y);
-    tm = RSoft_scaleMatrix(tm, 1 / tsx, 1 / tsy);
-    tm = RSoft_translateMatrix(tm, RSOFT_VECTOR2D(this->txtrLimit.x, this->txtrLimit.y));
+    RMatrix tm = RMatrix_initMatrix();
+    tm = RMatrix_translateMatrix(tm, RVECTOR(-this->drawFocus.x, -this->drawFocus.y));
+    tm = RMatrix_rotateMatrix(tm, this->txtrRotation + this->drawRotation);
+    tm = RMatrix_skewMatrix(tm, this->txtrSkew.x, this->txtrSkew.y);
+    tm = RMatrix_scaleMatrix(tm, 1 / tsx, 1 / tsy);
+    tm = RMatrix_translateMatrix(tm, RVECTOR(this->txtrLimit.x, this->txtrLimit.y));
     this->txtrMatrix = tm;
     //
 }
@@ -223,9 +227,7 @@ void Replot_printChanges(Replot *this) {
 }
 
 void Replot_resetChanges(Replot *this) {
-    RSoft_matrix x = RSoft_initMatrix();
-    RSoft_setMatrix(x);
-    this->drawRotation = 0;
+    _rplot_reset(this);
     this->stencil = NULL;
 }
 
@@ -500,7 +502,7 @@ int __circularLimitNum = 0;
 typedef void (*_CIRCULAR_POINT_FUNC)(Replot *, int, int, int, int);
 
 void _replot_pointCircularWithAngle(Replot *this, int cx, int cy, int x, int y) {
-    float angle = _replot_math_angle(x, y);
+    float angle = replot_math_angle(x, y);
     if (angle >= __circularAngleFrom && angle <= __circularAngleTo) {
         int _x = cx + x;
         int _y = cy + y;

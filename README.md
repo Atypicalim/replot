@@ -22,7 +22,7 @@ Replot_write(rplt, "test.jpg");
 
 > for more info please visit `replot.c` file
 
-![](./test.jpg)
+![](./output.png)
 
 ### 2. Alternatives
 

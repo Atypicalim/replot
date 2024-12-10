@@ -2,14 +2,7 @@
 #ifndef REPLOT_IMAGE
 #define REPLOT_IMAGE
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <ctype.h>
-#include <stdbool.h>
-#include <time.h>
+#include "RDefine.h"
 
 #ifndef REPLOT_NO_CUTE
     #define REPLOT_USE_CUTE

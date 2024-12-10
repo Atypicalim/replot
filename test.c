@@ -26,15 +26,14 @@ int main(void) {
     Replot_fillPolygon(rplt, RPOINT(125, 475), 75, 6);
     //
     Replot_setColor(rplt, RCOLOR(50, 100, 100, 255));
-    Replot_drawLine1(rplt, RSOFT_POINT(50, 50), RSOFT_POINT(550, 550), 10, RSOFT_POINT(550, 50));
+    Replot_drawLine1(rplt, RPOINT(50, 50), RPOINT(550, 550), 10, RPOINT(550, 50));
     //
     Replot_fillTriangle(rplt, RPOINT(100, 100), RPOINT(200, 100), RPOINT(150, 200));
     Replot_fillArc(rplt, RPOINT(450, 450), 50, 45, 270);
     Replot_printText(rplt, RPOINT(300, 35), 4, "WELCOME!");
     // 
-    char *_path = "test.jpg";
+    char *_path = "output.png";
     Replot_write(rplt, _path);
-    Replot *_rplt = Replot_read(_path);
 
     return 0;
 }
