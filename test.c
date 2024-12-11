@@ -23,7 +23,7 @@ int main(void) {
     Replot_fillRect(rplt, RPOINT(125, 475), RSIZE(200, 200)); 
     Replot_delStencil(rplt);
     //
-    Replot_setColor(rplt, RCOLOR(255, 100, 200, 255));
+    Replot_setColor(rplt, RCOLOR(155, 200, 255, 255));
     Replot_fillPolygon(rplt, RPOINT(125, 475), 75, 6);
     //
     Replot_setColor(rplt, RCOLOR(50, 100, 100, 255));
@@ -35,8 +35,8 @@ int main(void) {
     Replot_setColor(rplt, RCOLOR(75, 150, 50, 255));
     Replot_fillTriangle(rplt, RPOINT(100, 100), RPOINT(200, 100), RPOINT(150, 200));
     // 
-    Replot_setColor(rplt, RCOLOR(50, 100, 255, 255));
-    Replot_printText(rplt, RPOINT(300, 35), 4, "WELCOME!");
+    Replot_setColor(rplt, RCOLOR(150, 100, 50, 255));
+    Replot_printText(rplt, RPOINT(300, 35), 2, "WELCOME!");
     // 
     // 
     char *_path = "output.png";

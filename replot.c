@@ -647,40 +647,49 @@ void Replot_fillPolygon(Replot *this, RPoint point, int radius, int sides) {
 
 /////////////////////////////////////////////////////
 
-void _Replot_doPrint(Replot *this, int cx, int cy, char ch, int size) {
-    ch = tolower(ch);
-    int sw = _REPLOT_FONT_WIDTH * size;
-    int sh = _REPLOT_FONT_HEIGHT * size;
+void _Replot_doPrint(Replot *this, int cx, int cy, char ch, RFont *font, int size) {
+    int sw = font->w * size;
+    int sh = font->h * size;
     // _Replot_doRect(this, RPOINT(cx, cy), RSIZE(sw + 2, sh + 2), false);
-    int isFat = _REPLOT_FONT_FLAG[ch][0];
-    if (!isFat) cx = cx + size / 2;
-    for (int i = 0; i < _REPLOT_FONT_HEIGHT; i++) {
-        int charLine = _REPLOT_FONT_GLYPHS[ch][i];
-        for (int j = 0; j < _REPLOT_FONT_WIDTH; j++) {
-            int charDot = (charLine >> j) & 1;
-            if (!charDot) continue;
-            _replot_focusWithXYWH(this, cx, cy, sw, sh);
-            _replot_applyChanges(this);
-            int y = cy + size * (i - _REPLOT_FONT_HEIGHT / 2);
-            int x = cx + size * (_REPLOT_FONT_WIDTH / 2 - j);
-            _replot_rotateDrawXY(this, &x, &y);
-            _Replot_doRect(this, RPOINT(x, y), RSIZE(size, size), true);
+    int fontIndent = (int)ch * font->h;
+    _replot_focusWithXYWH(this, cx, cy, sw, sh);
+    _replot_applyChanges(this);
+    for (int i = 0; i < font->h; i++) {
+        int _cy = cy + (i - font->h / 2) * size;
+        int idx = fontIndent + i;
+        uchar num = font->glyphs[idx];
+        uchar _num = num;
+        for (size_t i = 0; i < font->w; i++) {
+            int needDot = (num >> (i + font->fix)) & 1;
+            if (!needDot) continue;
+            int __cx = cx + size * (font->w / 2 - i);
+            int __cy = _cy;
+            _replot_rotateDrawXY(this, &__cx, &__cy);
+            _Replot_doRect(this, RPOINT(__cx, __cy), RSIZE(size, size), true);
         }
     }
 }
 
+RFont *__replot_selectFont(int *size) {
+    int _size = *size;
+    *size = MAX(1, MIN(10, abs(*size)));
+    return _size >= 0 ? &_replotFont2 : &_replotFont1;
+}
+
 void Replot_printChar(Replot *this, RPoint point, int size, char ch) {
-    _Replot_doPrint(this, point.x, point.y, ch, size);
+    RFont *font = __replot_selectFont(&size);
+    _Replot_doPrint(this, point.x, point.y, ch, font, size);
 }
 
 int __textPosX[1024];
 int __textPosY[1024];
 
 void Replot_printText(Replot *this, RPoint point, int size, char *text) {
+    RFont *font = __replot_selectFont(&size);
     int length = strlen(text);
-    int distance = size * _REPLOT_FONT_WIDTH + 1;
+    int distance = size * font->w + 1;
     int sw = distance * length;
-    int sh = size * _REPLOT_FONT_HEIGHT;
+    int sh = size * font->h;
     int rotation = this->drawRotation;
     _replot_focusWithWH(this, &point, sw, sh);
     _replot_applyChanges(this);
@@ -696,7 +705,7 @@ void Replot_printText(Replot *this, RPoint point, int size, char *text) {
         char ch = text[i];
         int x = __textPosX[i];
         int y = __textPosY[i];
-        _Replot_doPrint(this, x, y, ch, size);
+        _Replot_doPrint(this, x, y, ch, font, size);
     } 
 }
 

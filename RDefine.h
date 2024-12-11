@@ -80,6 +80,14 @@ typedef struct RC_Color {
     unsigned char a;
 } RC_Color;
 
+typedef struct RC_Font {
+    int w;
+    int h;
+    uchar *glyphs;
+    int fix;
+} RC_Font;
+
+
 /////////////////////////////////////////////////////
 
 #ifndef RColor
@@ -89,6 +97,17 @@ typedef struct RC_Color {
 #ifndef RCOLOR
 #define RCOLOR(r, g, b, a) (RC_Color){r, g, b, a}
 #endif
+
+#ifndef RFont
+#define RFont RC_Font
+#endif
+
+#ifndef RFONT
+#define RFONT(w, h, glyphs, fix) (RC_Font){w, h, glyphs, fix}
+#endif
+
+/////////////////////////////////////////////////////
+
 
 #ifndef RRect
 typedef struct RRect { int x, y;  int w, h; } RRect;
