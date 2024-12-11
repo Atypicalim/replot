@@ -26,6 +26,19 @@ typedef unsigned int u32;
 typedef unsigned long u64;
 #endif
 
+#ifndef uchar
+typedef unsigned char uchar;
+#endif
+#ifndef ushort
+typedef unsigned short ushort;
+#endif
+#ifndef uint
+typedef unsigned int uint;
+#endif
+#ifndef ulong
+typedef unsigned long ulong;
+#endif
+
 #ifndef RByte
 typedef unsigned char RByte;
 #endif
@@ -57,6 +70,8 @@ typedef unsigned char *RTexture;
 #endif
 
 /////////////////////////////////////////////////////
+
+#define RCHANNEL 4
 
 typedef struct RC_Color {
     unsigned char r;
@@ -149,6 +164,42 @@ void RPOINT_ADD_TO(RPoint *to, RPoint *p) {
 void RSIZE_ADD_TO(RSize *to, RSize *p) {
     to->w = to->w + p->w;
     to->h = to->h + p->h;
+}
+
+/////////////////////////////////////////////////////
+
+// Function to interpolate between two colors
+RColor replote_color_interpolate(RColor start, RColor end, float t) {
+    RColor result;
+    result.r = (uint8_t)(start.r + (end.r - start.r) * t);
+    result.g = (uint8_t)(start.g + (end.g - start.g) * t);
+    result.b = (uint8_t)(start.b + (end.b - start.b) * t);
+    result.a = (uint8_t)(start.a + (end.a - start.a) * t);
+    return result;
+}
+
+RTexture __rGradientPixels = NULL;
+
+RTexture replot_generate_gradient(int w, int h, RColor ltColor, RColor rtColor, RColor lbColor, RColor rbColor) {
+    int _size = w * h * RCHANNEL * sizeof(RByte);
+    __rGradientPixels = (RTexture)realloc(__rGradientPixels, _size);
+    memset(__rGradientPixels, 0, _size);
+    for (int y = 0; y < h; y++) {
+        float ty = (float)y / (h - 1);
+        RColor leftColor = replote_color_interpolate(ltColor, lbColor, ty);
+        RColor rightColor = replote_color_interpolate(rtColor, rbColor, ty);
+        for (int x = 0; x < w; x++) {
+            float tx = (float)x / (w - 1);
+            RColor color = replote_color_interpolate(leftColor, rightColor, tx);
+            int index = y * w + x;
+            int indent = index * RCHANNEL;
+            __rGradientPixels[indent + 0] = color.r;
+            __rGradientPixels[indent + 1] = color.g;
+            __rGradientPixels[indent + 2] = color.b;
+            __rGradientPixels[indent + 3] = color.a;
+        }
+    }
+    return __rGradientPixels;
 }
 
 /////////////////////////////////////////////////////

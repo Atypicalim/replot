@@ -35,12 +35,12 @@ RPoint RC_POINT_ROTATE(RPoint point, RPoint anchor, int angle) {
 }
 
 void RC_POINT_SWAP(RPoint *p1, RPoint *p2) {
-    int t = (*p1).x;
-    (*p1).x = (*p2).x;
-    (*p2).x = t;
-    t = (*p1).y;
-    (*p1).y = (*p2).y;
-    (*p2).y = t;
+    int t = p1->x;
+    p1->x = p2->x;
+    p2->x = t;
+    t = p1->y;
+    p1->y = p2->y;
+    p2->y = t;
 }
 
 void RC_FLOAT_SWAP(float *a, float *b) {
@@ -52,12 +52,6 @@ void RC_FLOAT_SWAP(float *a, float *b) {
 RPoint RC_2POINTS_CENTER(RPoint ps[2]) {
     int x = (ps[0].x + ps[1].x) / 2;
     int y = (ps[0].y + ps[1].y) / 2;
-    return RPOINT(x, y);
-}
-
-RPoint RC_3POINTS_CENTER(RPoint ps[3]) {
-    int x = (ps[0].x + ps[1].x + ps[2].x) / 3;
-    int y = (ps[0].y + ps[1].y + ps[2].y) / 3;
     return RPOINT(x, y);
 }
 
@@ -88,6 +82,7 @@ typedef struct Replot {
     int sizeH;
     //
     RPixel drawColor;
+    bool isBlend;
     //
     RMatrix drawMatrix;
     RMatrix txtrMatrix;
@@ -104,6 +99,7 @@ typedef struct Replot {
     RTexture stencil;
     int stencilW;
     int stencilH;
+    int stencilSize;
     //
     REPLOT_PLOT_FUNC plot;
     //

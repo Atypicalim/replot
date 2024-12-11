@@ -86,8 +86,8 @@ RPoint RMatrix_applyMatrix(RMatrix matrix, RPoint v) {
 }
 
 void RMatrix_matrixRotate(RMatrix matrix, int *_px, int *_py) {	 			 
-    float px = *_px * 1.0f;
-    float py = *_py * 1.0f;
+    int px = *_px;
+    int py = *_py;
     float __px = (px * matrix.m[0]) + (py * matrix.m[3]) + matrix.m[6];
     float __py = (px * matrix.m[1]) + (py * matrix.m[4]) + matrix.m[7];
 	*_px = replot_math_round(__px);

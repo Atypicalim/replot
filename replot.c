@@ -20,6 +20,7 @@ void _rplot_reset(Replot *this) {
     this->drawColor[1] = 255;
     this->drawColor[2] = 255;
     this->drawColor[3] = 255; 
+    this->isBlend = false;
     this->drawRotation = 0;
     this->txtrRotation = 0;
     this->drawScale = (RScale){1, 1};
@@ -46,7 +47,7 @@ Replot *Replot_new(int w, int h) {
 
 Replot *Replot_wrap(RTexture *txtr, int w, int h) {
     Replot *rplt = Replot_new(w, h);
-    int _chnl = 4;
+    int _chnl = RCHANNEL;
     int _size = w * h * _chnl;
     rplt->buffer = (RTexture)realloc(rplt->buffer, _size);
     memcpy(rplt->buffer, *txtr, _size);
@@ -105,6 +106,7 @@ void _replot_delStencil(Replot *this) {
     this->stencil = NULL;
     this->stencilW = 0;
     this->stencilH = 0;
+    this->stencilSize = 0;
 }
 
 // TODO:support point
@@ -115,39 +117,47 @@ void _replot_setStencil(Replot *this, RTexture txtr, int w, int h) {
     memcpy(this->stencil, txtr, _size);
     this->stencilW = w;
     this->stencilH = h;
+    this->stencilSize = w * h;
 }
 
-u32 _replot_getColor(Replot *this, int px, int py) {
+void Replot_delStencil(Replot *this) {
+    this->stencil = NULL;
+}
 
-	u8 output[4] = {
-        this->drawColor[0],
-        this->drawColor[1],
-        this->drawColor[2],
-        this->drawColor[3]
-    };
+void _replot_getColor(Replot *this, int px, int py, RPixel output) {
+
 	if (this->stencil == NULL) {
-        return *((u32*)output);
+        output[0] = this->drawColor[0];
+        output[1] = this->drawColor[1];
+        output[2] = this->drawColor[2];
+        output[3] = this->drawColor[3];
+        return;
     }
-
+    int oldX = px;
+    int oldY = py;
     _replot_rotateTxtrXY(this, &px, &py);
 	size_t index = (py * this->stencilW) + px;
-    size_t indent = index * 4;
 
-	if (index > this->stencilW * this->stencilH) {
-        return *((u32*)output);
+	if (index >= this->stencilSize) {
+        output[0] = 0;
+        output[1] = 0;
+        output[2] = 0;
+        output[3] = 0;
+    } else {
+        size_t indent = index * RCHANNEL;
+        output[0] = this->stencil[indent];
+        output[1] = this->stencil[indent + 1];
+        output[2] = this->stencil[indent + 2];
+        output[3] = this->stencil[indent + 3];
     }
 
-	output[0] = this->stencil[indent];
-	output[1] = this->stencil[indent + 1];
-	output[2] = this->stencil[indent + 2];
-	output[3] = this->stencil[indent + 3];
+    if (this->isBlend) {
+        output[0] *= (float)(this->drawColor[0] / 255.0f);
+        output[1] *= (float)(this->drawColor[1] / 255.0f);
+        output[2] *= (float)(this->drawColor[2] / 255.0f);
+        output[3] *= (float)(this->drawColor[3] / 255.0f);
+    }
 
-	output[0] *= (float)(this->drawColor[0] / 255.0f);
-	output[1] *= (float)(this->drawColor[1] / 255.0f);
-	output[2] *= (float)(this->drawColor[2] / 255.0f);
-	output[3] *= (float)(this->drawColor[3] / 255.0f);
-
-	return *((u32*)output);
 }
 
 void _replot_limitWithXYWH(Replot *this, int cx, int cy, int sw, int sh) {
@@ -158,7 +168,7 @@ void _replot_limitWithXYWH(Replot *this, int cx, int cy, int sw, int sh) {
 }
 
 void _replot_limitWithWH(Replot *this, RPoint *center, int sw, int sh) {
-    _replot_limitWithXYWH(this, (*center).x, (*center).y, sw, sh);
+    _replot_limitWithXYWH(this, center->x, center->y, sw, sh);
 }
 
 void _replot_limitWithXY(Replot *this, int cx, int cy, RSize *size) {
@@ -166,7 +176,7 @@ void _replot_limitWithXY(Replot *this, int cx, int cy, RSize *size) {
 }
 
 void _replot_limit(Replot *this, RPoint *center, RSize *size) {
-    _replot_limitWithXYWH(this, (*center).x, (*center).y, (*size).w, (*size).h);
+    _replot_limitWithXYWH(this, center->x, center->y, (*size).w, (*size).h);
 }
 
 void _replot_focusWithXYWH(Replot *this, int cx, int cy, int sw, int sh) {
@@ -177,7 +187,7 @@ void _replot_focusWithXYWH(Replot *this, int cx, int cy, int sw, int sh) {
 }
 
 void _replot_focusWithWH(Replot *this, RPoint *center, int sw, int sh) {
-    _replot_focusWithXYWH(this, (*center).x, (*center).y, sw, sh);
+    _replot_focusWithXYWH(this, center->x, center->y, sw, sh);
 }
 
 void _replot_focusWithXY(Replot *this, int cx, int cy, RSize *size) {
@@ -185,7 +195,7 @@ void _replot_focusWithXY(Replot *this, int cx, int cy, RSize *size) {
 }
 
 void _replot_focus(Replot *this, RPoint *center, RSize *size) {
-    _replot_focusWithXYWH(this, (*center).x, (*center).y, (*size).w, (*size).h);
+    _replot_focusWithXYWH(this, center->x, center->y, (*size).w, (*size).h);
 }
 
 void _replot_applyChanges(Replot *this) {
@@ -233,14 +243,14 @@ void Replot_resetChanges(Replot *this) {
 
 void _replot_delPixels(Replot *this, u8 color[4]) {
     if (color[0] == color[1] && color[0] == color[2] && color[0] == color[3]) {
-        memset(this->buffer, color[0], this->w * this->h * 4 * sizeof(u8));  
+        memset(this->buffer, color[0], this->w * this->h * RCHANNEL * sizeof(u8));  
         return;
     }
     u32 x, y;
     for (y = 0; y < this->h; y++) {
         for (x = 0; x < this->w; x++) {
-            u32 index = (y * 4 * this->w) + x * 4;
-            memcpy(this->buffer + index, color, 4 * sizeof(u8));
+            u32 index = (y * RCHANNEL * this->w) + x * RCHANNEL;
+            memcpy(this->buffer + index, color, RCHANNEL * sizeof(u8));
         }
     }    
 }
@@ -249,7 +259,7 @@ void Replot_clear(Replot *this, RColor color) {
     _replot_delPixels(this, (RPixel){color.r, color.g, color.b, color.a});
 }
 
-void _replot_setPixel(Replot *this, int px, int py, u8 color[4]) {
+void _replot_setPixel(Replot *this, int px, int py, RPixel color) {
     u8 *buffer = this->buffer;
     int bufferW = this->w;
     int bufferH = this->h;
@@ -265,9 +275,9 @@ void _replot_setPixel(Replot *this, int px, int py, u8 color[4]) {
         }
     #endif
 
-	int index = ((u32)py) * (4 * bufferW) + (u32)px * 4;
+	int index = ((u32)py) * (RCHANNEL * bufferW) + (u32)px * RCHANNEL;
 	if (color[3] != 255) {
-		float alpha = color[3] / 255;
+		float alpha = color[3] / 255.0f;
 		color[0] = (color[0] * alpha) + ((1 - alpha) * buffer[index]);
 		color[1] =  (color[1] * alpha) + ((1 - alpha) * buffer[index + 1]);
 		color[2] =  (color[2] * alpha) + ((1 - alpha) * buffer[index + 2]);
@@ -276,13 +286,15 @@ void _replot_setPixel(Replot *this, int px, int py, u8 color[4]) {
     memcpy(buffer + index, color, 4 * sizeof(u8));
 }
 
+RPixel __replotPointColor = {0};
+
 void _replot_fillPointWithXY(Replot *this, int px, int py) {
-    u32 color = _replot_getColor(this, px, py);
-    _replot_setPixel(this, px, py, (u8*)&color);
+    _replot_getColor(this, px, py, __replotPointColor);
+    _replot_setPixel(this, px, py, __replotPointColor);
 }
 
 void _replot_fillPoint(Replot *this, RPoint *point) {
-    _replot_fillPointWithXY(this, (*point).x, (*point).y);
+    _replot_fillPointWithXY(this, point->x, point->y);
 }
 
 void _replot_fillLineWithXY(Replot *this, int x0, int y0, int x1, int y1) {
@@ -307,7 +319,7 @@ void _replot_fillLineWithXY(Replot *this, int x0, int y0, int x1, int y1) {
 }
 
 void _replot_fillLine(Replot *this, RPoint *start, RPoint *end) {
-    _replot_fillLineWithXY(this, (*start).x, (*start).y, (*end).x, (*end).y);
+    _replot_fillLineWithXY(this, start->x, start->y, end->x, end->y);
 }
 
 void Replot_drawPoint(Replot *this, RPoint point, int size) {
@@ -440,16 +452,22 @@ void __replot_paintTriangleComplex(Replot *this, RPoint *points, int thickness){
 
 void _replot_doTriangle(Replot *this, RPoint *point1, RPoint *point2, RPoint *point3, int thickness) {
     RPoint points[3] = {*point1, *point2, *point3};
-    RPoint center = RC_3POINTS_CENTER(points);
     int left = MIN(MIN(point1->x, point2->x), point3->x);
     int rght = MAX(MAX(point1->x, point2->x), point3->x);
     int top  = MIN(MIN(point1->y, point2->y), point3->y);
     int btm  = MAX(MAX(point1->y, point2->y), point3->y);
     int w = rght - left;
     int h = btm - top;
+    RPoint center = RPOINT((left + rght) / 2, (top + btm) / 2);
     _replot_focusWithWH(this, &center, w, h);
     _replot_applyChanges(this);
+    for (int i = 0; i < 3; i++) {
+        RPoint *point = &points[i];
+        _replot_rotateDrawPoint(this, point);
+    }
     __replot_paintTriangleComplex(this, points, thickness);
+    this->stencil = NULL;
+    _replot_fillPointWithXY(this, center.x, center.y);
 }
 
 void Replot_drawTriangle(Replot *this, RPoint point1, RPoint point2, RPoint point3) {
@@ -515,7 +533,7 @@ void _replot_pointCircularNoAngle(Replot *this, int cx, int cy, int x, int y) {
     int _x = cx + x;
     int _y = cy + y;
     _replot_rotateDrawXY(this, &_x, &_y);
-        _replot_fillPointWithXY(this, _x, _y);
+    _replot_fillPointWithXY(this, _x, _y);
 }
 
 void _replot_paintCircularRunLoop(Replot *this, RPoint *point, int rx, int ry, _CIRCULAR_POINT_FUNC func) {
@@ -526,13 +544,13 @@ void _replot_paintCircularRunLoop(Replot *this, RPoint *point, int rx, int ry, _
         for(int x=-rx; x<=rx; x++) {
             int num = x*x*h2+y*y*w2;
             if(num <= w2h2 && num > __circularLimitNum) {
-                func(this, (*point).x, (*point).y, x, y);
+                func(this, point->x, point->y, x, y);
             }
         }
     }
     if (__circularLimitNum <= 0) {
         _replot_rotateDrawPoint(this, point);
-        _replot_fillPointWithXY(this, (*point).x, (*point).y);
+        _replot_fillPointWithXY(this, point->x, point->y);
     }
 }
 
@@ -552,7 +570,7 @@ void _replot_doCircular(Replot *this, RPoint point, int rx, int ry, int limit, f
         _replot_paintCircularRunLoop(this, &point, rx, ry, _replot_pointCircularNoAngle);
     } else {
         _replot_paintCircularRunLoop(this, &point, rx, ry, _replot_pointCircularWithAngle);
-    }
+	}
 }
 
 void Replot_drawEllipse(Replot *this, RPoint point, int rx, int ry) {
@@ -685,10 +703,10 @@ void Replot_printText(Replot *this, RPoint point, int size, char *text) {
 /////////////////////////////////////////////////////
 
 void _replot_validatePointSize(RPoint *point, RSize *size, int w, int h) {
-    (*point).x = MAX(0, MIN(w, (*point).x));
-    (*point).y = MAX(0, MIN(h, (*point).y));
-    (*size).w = MIN(w - (*point).x, (*size).w / 2) * 2;
-    (*size).h = MIN(h - (*point).y, (*size).h / 2) * 2;
+    point->x = MAX(0, MIN(w, point->x));
+    point->y = MAX(0, MIN(h, point->y));
+    (*size).w = MIN(w - point->x, (*size).w / 2) * 2;
+    (*size).h = MIN(h - point->y, (*size).h / 2) * 2;
 }
 
 void Replot_drawCanvasExt(Replot *this, RPoint toP, RSize toS, Replot *rplt, RPoint frmP, RSize frmS) {
@@ -735,6 +753,33 @@ void Replot_setTexture(Replot *this, RTexture txtr, int w, int h) {
     RSize size = RSIZE(w, h);
     _replot_setStencil(this, txtr, w, h);
     _replot_limit(this, &point, &size);
+}
+
+void Replot_setGradient(Replot *this, int w, int h, RColor ltColor, RColor rtColor, RColor lbColor, RColor rbColor) {
+    RTexture texture = replot_generate_gradient(
+        w, h,
+        ltColor, rtColor,
+        lbColor, rbColor
+    );
+    Replot_setTexture(this, texture, w, h);
+}
+
+void Replot_setGradientH(Replot *this, int w, int h, RColor lColor, RColor rColor) {
+    RTexture texture = replot_generate_gradient(
+        w, h,
+        lColor, rColor,
+        lColor, rColor
+    );
+    Replot_setTexture(this, texture, w, h);
+}
+
+void Replot_setGradientV(Replot *this, int w, int h, RColor tColor, RColor bColor) {
+    RTexture texture = replot_generate_gradient(
+        w, h,
+        tColor, tColor,
+        bColor, bColor
+    );
+    Replot_setTexture(this, texture, w, h);
 }
 
 #ifdef REPLOT_USE_IMAGE
