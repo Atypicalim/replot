@@ -221,7 +221,7 @@ void _replot_applyChanges(Replot *this) {
     tm = RMatrix_translateMatrix(tm, RVECTOR(-this->drawFocus.x, -this->drawFocus.y));
     tm = RMatrix_rotateMatrix(tm, this->txtrRotation + this->drawRotation);
     tm = RMatrix_skewMatrix(tm, this->txtrSkew.x, this->txtrSkew.y);
-    tm = RMatrix_scaleMatrix(tm, 1 / tsx, 1 / tsy);
+    tm = RMatrix_scaleMatrix(tm, 1.0f / tsx, 1.0f / tsy);
     tm = RMatrix_translateMatrix(tm, RVECTOR(this->txtrLimit.x, this->txtrLimit.y));
     this->txtrMatrix = tm;
     //
@@ -366,36 +366,49 @@ void Replot_drawLine2(Replot *this, RPoint point1, RPoint point2, int thickness,
 int __triangleMinY = 0;
 int __triangleMaxY = 0;
 int __triangleThickness = 0;
-typedef void (*__TRIANGLE_LINE_FUNC)(Replot *, float, float, int, int);
+typedef void (*__TRIANGLE_LINE_FUNC)(Replot *, int, int, int, int);
 
-void __replot_lineTrianleLTR(Replot *this, float x1, float x2, int y, int thickness) {
+void __replot_lineTrianleLTR(Replot *this, int x1, int x2, int y, int thickness) {
     _replot_fillLineWithXY(this, x1, y, x1 + thickness, y);
     _replot_fillLineWithXY(this, x2 - thickness, y, x2, y);
 }
 
-void __replot_lineTrianleRTL(Replot *this, float x1, float x2, int y, int thickness) {
+void __replot_lineTrianleRTL(Replot *this, int x1, int x2, int y, int thickness) {
     _replot_fillLineWithXY(this, x1, y, x1 - thickness, y);
     _replot_fillLineWithXY(this, x2 + thickness, y, x2, y);
 }
 
 void __replot_loopTrianleBorder(Replot *this, int fromY, int toY, float *_x1, float *_x2, float x1Slope, float x2Slope, __TRIANGLE_LINE_FUNC func) {
     for(int y = fromY ; y < toY; y++){
+        int x1 = replot_math_round(*_x1);
+        int x2 = replot_math_round(*_x2);
         if (y - __triangleThickness <= __triangleMinY || y + __triangleThickness >= __triangleMaxY) {
-            _replot_fillLineWithXY(this, *_x1, y, *_x2, y);
+            _replot_fillLineWithXY(this, x1, y, x2, y);
         } else {
-            int distance = abs(*_x1 - *_x2);
+            int distance = abs(x1 - x2);
             int thickness = MIN(__triangleThickness, distance);
-            func(this, *_x1, *_x2, y, thickness);
+            func(this, x1, x2, y, thickness);
         }
         *_x1 += x1Slope;
         *_x2 += x2Slope;
     }
 }
 
+// zero when paint triangles for other shapes
+// to avoid sverly painting the borders
+bool __rTriangleExtend = 1;
+
 void __replot_paintTriangleSimple(Replot *this, int fromY, int toY, float *_x1, float *_x2, float x1Slope, float x2Slope, int thickness) {
+
     if (thickness <= 0) {
-        for(int y = fromY ; y < toY; y++){
-            _replot_fillLineWithXY(this, *_x1, y, *_x2, y);
+        for(int y = fromY ; y < toY; y++) { // __rTriangleExtend
+            int x1 = replot_math_round(*_x1);
+            int x2 = replot_math_round(*_x2);
+            if (x1 > x2) {
+                RC_INT_SWAP(&x1, &x2);
+            }
+            x2 = MAX(x1, x2); // __rTriangleExtend
+            _replot_fillLineWithXY(this, x1, y, x2, y);
             *_x1 += x1Slope;
             *_x2 += x2Slope;
         }
@@ -431,7 +444,7 @@ void __replot_paintTriangleComplex(Replot *this, RPoint *points, int thickness){
         }
         _x1 = points[0].x;
         _x2 = points[1].x;
-        _replot_fillLine(this, &points[0], &points[1]);
+        // _replot_fillLine(this, &points[0], &points[1]);
         __replot_paintTriangleSimple(this, _topY, _btmY, &_x1, &_x2, slope02, slope12, thickness);
     }else if(points[1].y == points[2].y){
         if(points[2].x < points[1].x){
@@ -440,7 +453,7 @@ void __replot_paintTriangleComplex(Replot *this, RPoint *points, int thickness){
         }
         _x1 = points[0].x;
         _x2 = points[0].x;
-        _replot_fillLine(this, &points[1], &points[2]);
+        // _replot_fillLine(this, &points[1], &points[2]);
         __replot_paintTriangleSimple(this, _topY, _btmY, &_x1, &_x2, slope01, slope02, thickness);
     }else{
         _x1 = points[0].x;
@@ -451,6 +464,7 @@ void __replot_paintTriangleComplex(Replot *this, RPoint *points, int thickness){
 }
 
 void _replot_doTriangle(Replot *this, RPoint *point1, RPoint *point2, RPoint *point3, int thickness) {
+    __rTriangleExtend = 1;
     RPoint points[3] = {*point1, *point2, *point3};
     int left = MIN(MIN(point1->x, point2->x), point3->x);
     int rght = MAX(MAX(point1->x, point2->x), point3->x);
@@ -458,7 +472,7 @@ void _replot_doTriangle(Replot *this, RPoint *point1, RPoint *point2, RPoint *po
     int btm  = MAX(MAX(point1->y, point2->y), point3->y);
     int w = rght - left;
     int h = btm - top;
-    RPoint center = RPOINT((left + rght) / 2, (top + btm) / 2);
+    RPoint center = RPOINT(replot_math_round((left + rght) / 2.0f), replot_math_round((top + btm) / 2.0f));
     _replot_focusWithWH(this, &center, w, h);
     _replot_applyChanges(this);
     for (int i = 0; i < 3; i++) {
@@ -478,32 +492,121 @@ void Replot_fillTriangle(Replot *this, RPoint point1, RPoint point2, RPoint poin
     _replot_doTriangle(this, &point1, &point2, &point3, 0);
 }
 
+
+void __replot_paintRect(Replot *this, RPoint point, RSize size, bool isFill) {
+    int rw = size.w / 2;
+    int rh = size.h / 2;
+    int left = point.x - rw;
+    int top = point.y - rh;
+    RPoint _p1 = RPOINT(left, top);
+    RPoint _p2 = RPOINT(left + size.w, top);
+    RPoint _p3 = RPOINT(left + size.w, top + size.h);
+    RPoint _p4 = RPOINT(left, top + size.h);
+    //
+    RPoint points[4] = {_p1, _p2, _p3, _p4};
+    for (int i = 0; i < 4; i++) {
+        _replot_rotateDrawPoint(this, &points[i]);
+    }
+    replot_sort_points(points, 4);
+    //
+    RPoint p1 = points[0];
+    RPoint p2 = points[1];
+    RPoint p3 = points[2];
+    RPoint p4 = points[3];
+    //
+    int _topY = p1.y;
+    int _btmY = p4.y;
+    int _upperY = p2.y;
+    int _lowerY = p3.y;
+    int _mddleY = (_upperY + _lowerY) / 2;
+    int _leftX = MIN(p1.x, MIN(p2.x, MIN(p3.x, p4.x)));
+    int _rightX = MAX(p1.x, MAX(p2.x, MAX(p3.x, p4.x)));
+    int _mddleX = (_leftX + _rightX) / 2;
+    int is2InRight = p2.x > p3.x;
+    //
+    if (!isFill) {
+        _replot_fillLine(this, &_p1, &_p2);	
+        _replot_fillLine(this, &_p2, &_p3);	
+        _replot_fillLine(this, &_p3, &_p4);	
+        _replot_fillLine(this, &_p4, &_p1);
+        return;
+    }
+    // % 90 == 0 gradus
+    if (p1.y == p2.y && p3.y == p4.y) {
+        for (int y = p1.y; y <= p3.y; y++) {
+            _replot_fillLineWithXY(this, p1.x, y, p2.x - 1, y);
+        }
+        return;
+    }
+    float slope12 = ((float)(p2.x-p1.x)/(p2.y-p1.y));
+    float slope13 = ((float)(p3.x-p1.x)/(p3.y-p1.y));
+    float slope24 = ((float)(p4.x-p2.x)/(p4.y-p2.y));
+    float slope42 = ((float)(p2.x-p4.x)/(p2.y-p4.y));
+    float slope43 = ((float)(p3.x-p4.x)/(p3.y-p4.y));
+    // % 90 == 45 gradus
+    if (p2.y == p3.y) {
+        float _x12 = p1.x;
+        float _x13 = p1.x;
+        for(int y = _topY ; y < _mddleY; y++){
+            int x12 = replot_math_round(_x12);
+            int x13 = replot_math_round(_x13);
+            _replot_fillLineWithXY(this, x12, y, x13, y);
+            _x12 += slope12;
+            _x13 += slope13;
+        }
+        float _x42 = p4.x;
+        float _x43 = p4.x;
+        for(int y = _btmY - 1 ; y >= _mddleY; y--){
+            int x42 = replot_math_round(_x42);
+            int x43 = replot_math_round(_x43);
+            _replot_fillLineWithXY(this, x42, y, x43, y);
+            _x42 -= slope42;
+            _x43 -= slope43;
+        }
+        return;
+    }
+    // % 90 == other gradus
+    float _x12 = p1.x;
+    float _x13 = p1.x;
+    float _x42 = p4.x;
+    float _x43 = p4.x;
+    if (is2InRight) {
+        _x12--;
+        _x42--;
+    } else {
+        _x13--;
+        _x43--;
+    }
+    for(int y = _topY ; y < _upperY; y++){
+        int x12 = replot_math_round(_x12);
+        int x13 = replot_math_round(_x13);
+        _replot_fillLineWithXY(this, x12, y, x13, y);
+        _x12 += slope12;
+        _x13 += slope13;
+    }
+    for(int y = _btmY - 1 ; y >= _lowerY; y--){
+        int x42 = replot_math_round(_x42);
+        int x43 = replot_math_round(_x43);
+        _replot_fillLineWithXY(this, x42, y, x43, y);
+        _x42 -= slope42;
+        _x43 -= slope43;
+    }
+    float _x22 = _x12;
+    float _x33 = _x13;
+    for(int y = _upperY ; y < _lowerY; y++){
+        int x22 = replot_math_round(_x22);
+        int x33 = replot_math_round(_x33);
+        _replot_fillLineWithXY(this, x22, y, x33, y);
+        _x22 += slope13;
+        _x33 += slope24;
+    }
+    //
+}
+
 void _Replot_doRect(Replot *this, RPoint point, RSize size, bool isFill) {
     _replot_focusWithWH(this, &point, size.w, size.h);
     _replot_applyChanges(this);
-    int rw = size.w / 2;
-    int rh = size.h / 2;
-    RPoint ltp = RPOINT(point.x - rw, point.y - rh);
-    RPoint lbp = RPOINT(point.x - rw, point.y + rh - 1);
-    RPoint rbp = RPOINT(point.x + rw - 1, point.y + rh - 1);
-    RPoint rtp = RPOINT(point.x + rw - 1, point.y - rh);
-    //
-    _replot_rotateDrawPoint(this, &ltp); 
-    _replot_rotateDrawPoint(this, &lbp); 
-    _replot_rotateDrawPoint(this, &rbp); 
-    _replot_rotateDrawPoint(this, &rtp); 
-    //
-    if (isFill) {
-        RPoint points1[3] = {ltp, rtp, lbp};
-        RPoint points2[3] = {lbp, rbp, rtp};
-        __replot_paintTriangleComplex(this, points1, 0);
-        __replot_paintTriangleComplex(this, points2, 0);
-    } else {
-        _replot_fillLine(this, &ltp, &lbp);	
-        _replot_fillLine(this, &lbp, &rbp);	
-        _replot_fillLine(this, &rbp, &rtp);	
-        _replot_fillLine(this, &rtp, &ltp);
-    }
+    __replot_paintRect(this, point, size, isFill);
 }
 
 void Replot_drawRect(Replot *this, RPoint point, RSize size) {
@@ -524,7 +627,7 @@ void _replot_pointCircularWithAngle(Replot *this, int cx, int cy, int x, int y) 
     if (angle >= __circularAngleFrom && angle <= __circularAngleTo) {
         int _x = cx + x;
         int _y = cy + y;
-        _replot_rotateDrawXY(this, &_x, &_y);
+        // _replot_rotateDrawXY(this, &_x, &_y);
         _replot_fillPointWithXY(this, _x, _y);
     }
 }
@@ -532,7 +635,7 @@ void _replot_pointCircularWithAngle(Replot *this, int cx, int cy, int x, int y) 
 void _replot_pointCircularNoAngle(Replot *this, int cx, int cy, int x, int y) {
     int _x = cx + x;
     int _y = cy + y;
-    _replot_rotateDrawXY(this, &_x, &_y);
+    // _replot_rotateDrawXY(this, &_x, &_y);
     _replot_fillPointWithXY(this, _x, _y);
 }
 
@@ -549,7 +652,7 @@ void _replot_paintCircularRunLoop(Replot *this, RPoint *point, int rx, int ry, _
         }
     }
     if (__circularLimitNum <= 0) {
-        _replot_rotateDrawPoint(this, point);
+        // _replot_rotateDrawPoint(this, point);
         _replot_fillPointWithXY(this, point->x, point->y);
     }
 }
@@ -603,22 +706,31 @@ void Replot_fillArc(Replot *this, RPoint point, int r, float fromAngle, float to
     _replot_doCircular(this, point, r, r, limit, fromAngle, toAngle);
 }
 
-#define _EPOLYGON_MAX_SIDE 64
-#define _EPOLYGON_MAX_RADIUS 1024
-RPoint __ePolygonPoints[_EPOLYGON_MAX_SIDE];
+void Replot_drawRing(Replot *this, RPoint point, int r, int thickness) {
+    int _r = r + thickness;
+    int limit = (r - 1) * (r - 1);
+    int _limit = (_r - 1) * (_r - 1);
+    _replot_doCircular(this, point, r, r, limit, 0, 360);
+    _replot_doCircular(this, point, _r, _r, _limit, 0, 360);
+}
 
-void _replot_doPolygon(Replot *this, RPoint point, int radius, int sides, bool isFill) {
-    int centerX = point.x;
-    int centerY = point.y;
-    _replot_focusWithWH(this, &point, radius * 2, radius * 2);
-    _replot_applyChanges(this);
+void Replot_fillRing(Replot *this, RPoint point, int r, int thickness) {
+    int limit = (r - thickness) * (r - thickness);
+    _replot_doCircular(this, point, r, r, limit, 0, 360);
+}
+
+#define _SHAPE_MAX_SIDE 64
+#define _SHAPE_MAX_RADIUS 512
+RPoint __rShapePoints[_SHAPE_MAX_SIDE];
+
+void __replot_paintPolygon(Replot *this, int sides, RPoint point, int radius, bool isFill) {
     //
-    sides = MIN(_EPOLYGON_MAX_SIDE, sides);
-    radius = MIN(_EPOLYGON_MAX_RADIUS, radius);
+    sides = MIN(_SHAPE_MAX_SIDE, sides);
+    radius = MIN(_SHAPE_MAX_RADIUS, radius);
     double angleIncrement = (2 * M_PI) / sides; // Angle between each vertex
     for (int i = 0; i < sides; i++) {
         double angle = i * angleIncrement; // Current angle
-        RPoint *p = &__ePolygonPoints[i];
+        RPoint *p = &__rShapePoints[i];
         p->x = radius * cos(angle); // x-coordinate
         p->y = radius * sin(angle); // y-coordinate
         RPOINT_ADD_TO(p, &point);
@@ -626,8 +738,8 @@ void _replot_doPolygon(Replot *this, RPoint point, int radius, int sides, bool i
     }
     //
     for (int i = 0; i < sides; i++) {
-        RPoint p1 = __ePolygonPoints[i];
-        RPoint p2 = __ePolygonPoints[i == sides - 1 ? 0 : i + 1];
+        RPoint p1 = __rShapePoints[i];
+        RPoint p2 = __rShapePoints[i == sides - 1 ? 0 : i + 1];
         if (isFill) {
             RPoint points[3] = {p1, p2, point};
             __replot_paintTriangleComplex(this, points, 0);
@@ -637,17 +749,57 @@ void _replot_doPolygon(Replot *this, RPoint point, int radius, int sides, bool i
     }
 }
 
-void Replot_drawPolygon(Replot *this, RPoint point, int radius, int sides) {
-    _replot_doPolygon(this, point, radius, sides, false);
+void _replot_doPolygon(Replot *this, int sides, RPoint point, int radius, bool isFill) {
+    __rTriangleExtend = 0;
+    int _size = radius * 2;
+    _replot_focusWithWH(this, &point, _size, _size);
+    _replot_applyChanges(this);
+    __replot_paintPolygon(this, sides, point, radius, isFill);
 }
 
-void Replot_fillPolygon(Replot *this, RPoint point, int radius, int sides) {
-    _replot_doPolygon(this, point, radius, sides, true);
+void Replot_drawPolygon(Replot *this, int sides, RPoint point, int radius) {
+    _replot_doPolygon(this, sides, point, radius, false);
+}
+
+void Replot_fillPolygon(Replot *this, int sides, RPoint point, int radius) {
+    _replot_doPolygon(this, sides, point, radius, true);
+}
+
+void _replot_doStar(Replot *this, int sides, RPoint point, int radius1, int radius2, bool isFill) {
+    __rTriangleExtend = 0;
+    int _size = (radius1 + radius2) * 2;
+    _replot_focusWithWH(this, &point, _size, _size);
+    _replot_applyChanges(this);
+    __replot_paintPolygon(this, sides, point, radius1, isFill);
+    for (int i = 0; i < sides; i++) {
+        RPoint p1 = __rShapePoints[i];
+        RPoint p2 = __rShapePoints[i == sides - 1 ? 0 : i + 1];
+        RPoint middle = RPOINT((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        int dx = middle.x - point.x;
+        int dy = middle.y - point.y;
+        float magnitude = sqrt(dx * dx + dy * dy);
+        float rateX = magnitude == 0 ? 0 : dx / magnitude;
+        float rateY = magnitude == 0 ? 1 : dy / magnitude;
+        RVector vector = RVECTOR(radius2 * rateX, radius2 * rateY);
+        RPoint p3 = RPOINT(middle.x + vector.x, middle.y + vector.y);
+        RPoint points[3] = {p1, p2, p3};
+        int thickness = isFill ? 0 : 1;
+        __replot_paintTriangleComplex(this, points, thickness);
+    }
+}
+
+void Replot_drawStar(Replot *this, int sides, RPoint point, int radius1, int radius2) {
+    _replot_doStar(this, sides, point, radius1, radius2, false);
+}
+
+void Replot_fillStar(Replot *this, int sides, RPoint point, int radius1, int radius2) {
+    _replot_doStar(this, sides, point, radius1, radius2, true);
 }
 
 /////////////////////////////////////////////////////
 
 void _Replot_doPrint(Replot *this, int cx, int cy, char ch, RFont *font, int size) {
+    __rTriangleExtend = 0;
     int sw = font->w * size;
     int sh = font->h * size;
     // _Replot_doRect(this, RPOINT(cx, cy), RSIZE(sw + 2, sh + 2), false);
@@ -655,25 +807,24 @@ void _Replot_doPrint(Replot *this, int cx, int cy, char ch, RFont *font, int siz
     _replot_focusWithXYWH(this, cx, cy, sw, sh);
     _replot_applyChanges(this);
     for (int i = 0; i < font->h; i++) {
-        int _cy = cy + (i - font->h / 2) * size;
+        int _cy = cy + replot_math_round((i - font->h / 2.0f) * size);
         int idx = fontIndent + i;
         uchar num = font->glyphs[idx];
         uchar _num = num;
         for (size_t i = 0; i < font->w; i++) {
             int needDot = (num >> (i + font->fix)) & 1;
             if (!needDot) continue;
-            int __cx = cx + size * (font->w / 2 - i);
+            int __cx = cx + replot_math_round(size * (font->w / 2.0f - i));
             int __cy = _cy;
-            _replot_rotateDrawXY(this, &__cx, &__cy);
-            _Replot_doRect(this, RPOINT(__cx, __cy), RSIZE(size, size), true);
+            __replot_paintRect(this, RPOINT(__cx, __cy), RSIZE(size, size), true);
         }
     }
 }
 
 RFont *__replot_selectFont(int *size) {
-    int _size = *size;
-    *size = MAX(1, MIN(10, abs(*size)));
-    return _size >= 0 ? &_replotFont2 : &_replotFont1;
+    RFont *font = *size >= 0 ? &_replotFont2 : &_replotFont1;
+    *size = MAX(1, MIN(10, abs(*size))) * 2 - 1;
+    return font;
 }
 
 void Replot_printChar(Replot *this, RPoint point, int size, char ch) {
@@ -695,7 +846,7 @@ void Replot_printText(Replot *this, RPoint point, int size, char *text) {
     _replot_applyChanges(this);
     // _Replot_doRect(this, point, RSIZE(sw, sh), false);
     for (int i = 0; i < length; i++) {
-        int x = point.x + distance * (i - length / 2.0f + 0.5);
+        int x = point.x + replot_math_round(distance * (i - length / 2.0f + 0.5));
         int y = point.y;
         _replot_rotateDrawXY(this, &x, &y);
         __textPosX[i] = x;
@@ -711,11 +862,17 @@ void Replot_printText(Replot *this, RPoint point, int size, char *text) {
 
 /////////////////////////////////////////////////////
 
+void Replot_free(Replot *this) {
+    _replot_delStencil(this);
+    free(this->buffer);
+    free(this);
+}
+
 void _replot_validatePointSize(RPoint *point, RSize *size, int w, int h) {
     point->x = MAX(0, MIN(w, point->x));
     point->y = MAX(0, MIN(h, point->y));
-    (*size).w = MIN(w - point->x, (*size).w / 2) * 2;
-    (*size).h = MIN(h - point->y, (*size).h / 2) * 2;
+    (*size).w = MIN(w - point->x, replot_math_round((*size).w / 2.0f)) * 2;
+    (*size).h = MIN(h - point->y, replot_math_round((*size).h / 2.0f)) * 2;
 }
 
 void Replot_drawCanvasExt(Replot *this, RPoint toP, RSize toS, Replot *rplt, RPoint frmP, RSize frmS) {
@@ -729,7 +886,7 @@ void Replot_drawCanvasExt(Replot *this, RPoint toP, RSize toS, Replot *rplt, RPo
 
 void Replot_drawCanvas(Replot *this, RPoint point, RSize size, Replot *rplt) {
     _replot_validatePointSize(&point, &size, this->w, this->h);
-    RPoint frmP = RPOINT((*rplt).w / 2, (*rplt).h / 2);
+    RPoint frmP = RPOINT(replot_math_round((*rplt).w / 2), replot_math_round((*rplt).h / 2));
     RSize frmS = RSIZE((*rplt).w, (*rplt).h);
     _replot_setStencil(this, rplt->buffer, rplt->w, rplt->h);
     _replot_limit(this, &frmP, &frmS);
@@ -740,7 +897,7 @@ void Replot_drawCanvas(Replot *this, RPoint point, RSize size, Replot *rplt) {
 // TODO:fix bug
 Replot *Replot_copy(Replot *this, RPoint point, RSize size) {
     Replot *rplt = Replot_new(size.w, size.h);
-    RPoint toP = RPOINT(size.w / 2, size.h / 2);
+    RPoint toP = RPOINT(replot_math_round(size.w / 2.0f), replot_math_round(size.h / 2.0f));
     Replot_drawCanvasExt(rplt, toP, size, this, point, size);
     return rplt;
 }
@@ -750,15 +907,144 @@ void Replot_crop(Replot *this, RPoint point, RSize size) {
     _replot_setStencil(this, this->buffer, this->w, this->h);
     _replot_limit(this, &point, &size);
     _replot_prepare(this, size.w, size.h);
-    RPoint toP = RPOINT(size.w / 2, size.h / 2);
+    RPoint toP = RPOINT(replot_math_round(size.w / 2.0f), replot_math_round(size.h / 2.0f));
     _Replot_doRect(this, toP, size, true);
     _replot_delStencil(this);
+}
+
+void Replot_flipX(Replot *this) {
+    RPixel temp = {0};
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w / 2; x++) {
+	        size_t index1 = (y * this->w) + x;
+	        size_t index2 = (y * this->w) + this->w - 1 - x;
+            size_t indent1 = index1 * RCHANNEL;
+            size_t indent2 = index2 * RCHANNEL;
+            RPIXEL_COPY_TO(temp, 0, this->buffer, indent1);
+            RPIXEL_COPY_TO(this->buffer, indent1, this->buffer, indent2);
+            RPIXEL_COPY_TO(this->buffer, indent2, temp, 0);
+        }
+    }
+}
+
+void Replot_flipY(Replot *this) {
+    RPixel temp = {0};
+    for (int y = 0; y < this->h / 2; y++) {
+        for (int x = 0; x < this->w; x++) {
+	        size_t index1 = (y * this->w) + x;
+	        size_t index2 = ((this->h -1 - y) * this->w) + x;
+            size_t indent1 = index1 * RCHANNEL;
+            size_t indent2 = index2 * RCHANNEL;
+            RPIXEL_COPY_TO(temp, 0, this->buffer, indent1);
+            RPIXEL_COPY_TO(this->buffer, indent1, this->buffer, indent2);
+            RPIXEL_COPY_TO(this->buffer, indent2, temp, 0);
+        }
+    }
+}
+
+void Replot_flip(Replot *this, bool flipX, bool flipY) {
+    if (flipX) Replot_flipX(this);
+    if (flipY) Replot_flipY(this);
+}
+
+RByte *Replot_getPixel(Replot *this, int x, int y) {
+    size_t index = (y * this->w) + x;
+    size_t indent = index * RCHANNEL;
+    return &this->buffer[indent];
+}
+
+void Replot_setPixel(Replot *this, int x, int y, RByte *pixel) {
+    size_t index = (y * this->w) + x;
+    size_t indent = index * RCHANNEL;
+    this->buffer[indent + 0] = pixel[0];
+    this->buffer[indent + 1] = pixel[1];
+    this->buffer[indent + 2] = pixel[2];
+    this->buffer[indent + 3] = pixel[3];
+}
+
+void Replot_invert(Replot *this) {
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w; x++) {
+	        size_t index = (y * this->w) + x;
+            size_t indent = index * RCHANNEL;
+            for (int i = 0; i < 3; i++) {
+                this->buffer[indent] = 255 - this->buffer[indent];
+            }
+        }
+    }
+}
+
+void Replot_tint(Replot *this, RColor tintColor, float intensity) {
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w; x++) {
+            RByte *pix = Replot_getPixel(this, x, y);
+            pix[0] = (unsigned char)((1 - intensity) * pix[0] + intensity * tintColor.r);
+            pix[1] = (unsigned char)((1 - intensity) * pix[1] + intensity * tintColor.g);
+            pix[2] = (unsigned char)((1 - intensity) * pix[2] + intensity * tintColor.b);
+        }
+    }
+}
+
+void Replot_fade(Replot *this, float intensity) {
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w; x++) {
+            RByte *pix = Replot_getPixel(this, x, y);
+            pix[3] = (unsigned char)(intensity * 255);
+        }
+    }
+}
+
+void Replot_sync(Replot *this, Replot *to) {
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w; x++) {
+            u32 index = (y * RCHANNEL * this->w) + x * RCHANNEL;
+            memcpy(to->buffer + index, this->buffer + index, RCHANNEL * sizeof(u8));
+        }
+    } 
+}
+
+void Replot_blur(Replot *this, int radius) {
+    Replot *blurred = Replot_new(this->w, this->h);
+
+    // Loop through each pixel in the image
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w; x++) {
+            int rSum = 0, gSum = 0, bSum = 0;
+            int count = 0;
+            // Loop over the neighboring pixels (3x3)
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dx = -radius; dx <= radius; dx++) {
+                    int newY = y + dy;
+                    int newX = x + dx;
+
+                    // Check bounds
+                    if (newY >= 0 && newY < this->h && newX >= 0 && newX < this->w) {
+                       RByte *pix = Replot_getPixel(this, newX, newY);
+                        rSum += pix[0];
+                        gSum += pix[1];
+                        bSum += pix[2];
+                        count++;
+                    }
+                }
+            }
+            // Compute the average color and store it in the blurred image
+            RPixel pix = {0};
+            pix[0] = (unsigned char)(rSum / count);
+            pix[1] = (unsigned char)(gSum / count);
+            pix[2] = (unsigned char)(bSum / count);
+            pix[3] = 255;
+            Replot_setPixel(blurred, x, y, pix);
+        }
+    }
+
+    Replot_sync(blurred, this);
+    Replot_free(blurred);
 }
 
 /////////////////////////////////////////////////////
 
 void Replot_setTexture(Replot *this, RTexture txtr, int w, int h) {
-    RPoint point = RPOINT(w / 2, h / 2);
+    RPoint point = RPOINT(replot_math_round(w / 2.0f), replot_math_round(h / 2.0f));
     RSize size = RSIZE(w, h);
     _replot_setStencil(this, txtr, w, h);
     _replot_limit(this, &point, &size);
@@ -810,7 +1096,7 @@ void Replot_setImage(Replot *this, char *path) {
     } else {
         int w, h, c;
         RTexture txtr = rimage_read(path, &w, &h, &c);
-        RPoint point = RPOINT(w / 2, h / 2);
+        RPoint point = RPOINT(replot_math_round(w / 2.0f), replot_math_round(h / 2.0f));
         RSize size = RSIZE(w, h);
         _replot_setStencil(this, txtr, w, h);
         _replot_limit(this, &point, &size);
@@ -846,11 +1132,5 @@ void Replot_write(Replot *this, char *path) {
 #endif
 
 /////////////////////////////////////////////////////
-
-void Replot_free(Replot *this) {
-    _replot_delStencil(this);
-    free(this->buffer);
-    free(this);
-}
 
 #endif

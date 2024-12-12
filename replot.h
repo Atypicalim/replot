@@ -49,6 +49,12 @@ void RC_FLOAT_SWAP(float *a, float *b) {
     *b = t;
 }
 
+void RC_INT_SWAP(int *a, int *b) {
+    int t = *a;
+    *a = *b;
+    *b = t;
+}
+
 RPoint RC_2POINTS_CENTER(RPoint ps[2]) {
     int x = (ps[0].x + ps[1].x) / 2;
     int y = (ps[0].y + ps[1].y) / 2;
@@ -65,6 +71,24 @@ RPoint RC_POINT_LERP(RPoint p1, RPoint p2, float t) {
 
 RPoint RC_POINT_MIDDLE(RPoint p1, RPoint p2) {
     return (RPoint) {replot_math_lerp(p1.x, p2.x, 0.5), replot_math_lerp(p1.y, p2.y, 0.5)};
+}
+
+// Function to swap two points
+void replot_swap_point(RPoint* a, RPoint* b) {
+    RPoint temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+// Bubble sort function to sort points by their y-coordinate
+void replot_sort_points(RPoint* points, int n) {
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (points[j].y > points[j + 1].y) {
+                replot_swap_point(&points[j], &points[j + 1]);
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////

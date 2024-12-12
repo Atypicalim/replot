@@ -185,6 +185,13 @@ void RSIZE_ADD_TO(RSize *to, RSize *p) {
     to->h = to->h + p->h;
 }
 
+void RPIXEL_COPY_TO(RTexture to, int i1, RTexture frm, int i2) {
+    to[i1 + 0] = frm[i2 + 0];
+    to[i1 + 1] = frm[i2 + 1];
+    to[i1 + 2] = frm[i2 + 2];
+    to[i1 + 3] = frm[i2 + 3];
+}
+
 /////////////////////////////////////////////////////
 
 // Function to interpolate between two colors
@@ -224,7 +231,11 @@ RTexture replot_generate_gradient(int w, int h, RColor ltColor, RColor rtColor, 
 /////////////////////////////////////////////////////
 
 int replot_math_round(float n) {
-    return (int)(n + 0.5);
+    if (n >= 0) {
+        return (int)(n + 0.5);
+    } else {
+        return (int)(n - 0.5);
+    }
 }
 
 long long replot_time_now() {
