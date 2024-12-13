@@ -22,9 +22,6 @@ typedef unsigned short u16;
 #ifndef u32
 typedef unsigned int u32;
 #endif
-#ifndef u64
-typedef unsigned long u64;
-#endif
 
 #ifndef uchar
 typedef unsigned char uchar;
@@ -34,9 +31,6 @@ typedef unsigned short ushort;
 #endif
 #ifndef uint
 typedef unsigned int uint;
-#endif
-#ifndef ulong
-typedef unsigned long ulong;
 #endif
 
 #ifndef RByte
