@@ -30,7 +30,7 @@ int main(void) {
     Replot_drawLine1(rplt, RPOINT(ctrX - 200, topY + 25), RPOINT(ctrX + 200, topY + 25), 10, RPOINT(ctrX, ctrY));
     // 
     Replot_setColor(rplt, RCOLOR(150, 100, 50, 255));
-    Replot_printText(rplt, RPOINT(ctrX, topY + 40), 2, "WELCOME!");
+    Replot_printText(rplt, RPOINT(ctrX, topY + 40), 4, "WELCOME!");
     //
     Replot_setColor(rplt, RCOLOR(75, 150, 50, 255));
     Replot_fillTriangle(rplt, RPOINT(ctrX - 75, topY + 75), RPOINT(ctrX, topY + 200), RPOINT(ctrX + 75, topY + 75));

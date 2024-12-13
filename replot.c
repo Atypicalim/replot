@@ -918,8 +918,10 @@ void Replot_drawCanvasExt(Replot *this, RPoint toP, RSize toS, Replot *rplt, RPo
 
 void Replot_drawCanvas(Replot *this, RPoint point, RSize size, Replot *rplt) {
     _replot_validatePointSize(&point, &size, this->w, this->h);
-    RPoint frmP = RPOINT(replot_math_round((*rplt).w / 2), replot_math_round((*rplt).h / 2));
-    RSize frmS = RSIZE((*rplt).w, (*rplt).h);
+    int _w2 = rplt->w / 2;
+    int _h2 = rplt->h / 2;
+    RPoint frmP = RPOINT(_w2, _h2);
+    RSize frmS = RSIZE(_w2 * 2, _h2 * 2);
     _replot_setStencil(this, rplt->buffer, rplt->w, rplt->h);
     _replot_limit(this, &frmP, &frmS);
     _Replot_doRect(this, point, size, true);
