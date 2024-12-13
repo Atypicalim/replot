@@ -822,8 +822,14 @@ void _Replot_doPrint(Replot *this, int cx, int cy, char ch, RFont *font, int siz
 }
 
 RFont *__replot_selectFont(int *size) {
-    RFont *font = *size >= 0 ? &_replotFont2 : &_replotFont1;
-    *size = MAX(1, MIN(10, abs(*size))) * 2 - 1;
+    *size = MAX(1, MIN(50, abs(*size)));
+    RFont *font = NULL;
+    if (*size % 2 == 0) {
+        font = &_replotFont2;
+        *size = *size - 1;
+    } else {
+        font = &_replotFont1;
+    }
     return font;
 }
 
@@ -868,12 +874,38 @@ void Replot_free(Replot *this) {
     free(this);
 }
 
+void Replot_syncTo(Replot *this, Replot *other) {
+    for (int y = 0; y < this->h; y++) {
+        for (int x = 0; x < this->w; x++) {
+            u32 index = (y * RCHANNEL * this->w) + x * RCHANNEL;
+            memcpy(other->buffer + index, this->buffer + index, RCHANNEL * sizeof(u8));
+        }
+    } 
+}
+
+RByte *Replot_getPixel(Replot *this, int x, int y) {
+    size_t index = (y * this->w) + x;
+    size_t indent = index * RCHANNEL;
+    return &this->buffer[indent];
+}
+
+void Replot_setPixel(Replot *this, int x, int y, RByte *pixel) {
+    size_t index = (y * this->w) + x;
+    size_t indent = index * RCHANNEL;
+    this->buffer[indent + 0] = pixel[0];
+    this->buffer[indent + 1] = pixel[1];
+    this->buffer[indent + 2] = pixel[2];
+    this->buffer[indent + 3] = pixel[3];
+}
+
 void _replot_validatePointSize(RPoint *point, RSize *size, int w, int h) {
     point->x = MAX(0, MIN(w, point->x));
     point->y = MAX(0, MIN(h, point->y));
     (*size).w = MIN(w - point->x, replot_math_round((*size).w / 2.0f)) * 2;
     (*size).h = MIN(h - point->y, replot_math_round((*size).h / 2.0f)) * 2;
 }
+
+/////////////////////////////////////////////////////
 
 void Replot_drawCanvasExt(Replot *this, RPoint toP, RSize toS, Replot *rplt, RPoint frmP, RSize frmS) {
     _replot_validatePointSize(&toP, &toS, this->w, this->h);
@@ -947,21 +979,6 @@ void Replot_flip(Replot *this, bool flipX, bool flipY) {
     if (flipY) Replot_flipY(this);
 }
 
-RByte *Replot_getPixel(Replot *this, int x, int y) {
-    size_t index = (y * this->w) + x;
-    size_t indent = index * RCHANNEL;
-    return &this->buffer[indent];
-}
-
-void Replot_setPixel(Replot *this, int x, int y, RByte *pixel) {
-    size_t index = (y * this->w) + x;
-    size_t indent = index * RCHANNEL;
-    this->buffer[indent + 0] = pixel[0];
-    this->buffer[indent + 1] = pixel[1];
-    this->buffer[indent + 2] = pixel[2];
-    this->buffer[indent + 3] = pixel[3];
-}
-
 void Replot_invert(Replot *this) {
     for (int y = 0; y < this->h; y++) {
         for (int x = 0; x < this->w; x++) {
@@ -992,15 +1009,6 @@ void Replot_fade(Replot *this, float intensity) {
             pix[3] = (unsigned char)(intensity * 255);
         }
     }
-}
-
-void Replot_sync(Replot *this, Replot *to) {
-    for (int y = 0; y < this->h; y++) {
-        for (int x = 0; x < this->w; x++) {
-            u32 index = (y * RCHANNEL * this->w) + x * RCHANNEL;
-            memcpy(to->buffer + index, this->buffer + index, RCHANNEL * sizeof(u8));
-        }
-    } 
 }
 
 void Replot_blur(Replot *this, int radius) {
@@ -1037,7 +1045,7 @@ void Replot_blur(Replot *this, int radius) {
         }
     }
 
-    Replot_sync(blurred, this);
+    Replot_syncTo(blurred, this);
     Replot_free(blurred);
 }
 
